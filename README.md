@@ -170,3 +170,45 @@ answers `404`.
 > `io.spring.dependency-management` plugin. A platform only adds version constraints and lets Gradle
 > resolve conflicts as usual. The dependency-management plugin enforces the BOM versions instead,
 > and would downgrade for example `kotlinx-coroutines` below the version Kotest and Wirespec need.
+
+## Step 4: Implement the generated handlers
+
+[`BookController`](src/main/kotlin/community/flock/library/BookController.kt) implements the five
+generated `Handler` interfaces, and [`Library`](src/main/kotlin/community/flock/library/Library.kt)
+keeps the books in memory:
+
+```kotlin
+@RestController
+class BookController(private val library: Library) :
+    ListBooks.Handler, AddBook.Handler, GetBook.Handler, BorrowBook.Handler, ReturnBook.Handler {
+
+    override suspend fun addBook(request: AddBook.Request): AddBook.Response<*> = when {
+        request.body.isbn.validate() -> AddBook.Response201(library.add(request.body))
+        else -> AddBook.Response400(ApiError(code = 400, message = "Invalid ISBN: ${request.body.isbn}"))
+    }
+
+    override suspend fun borrowBook(request: BorrowBook.Request): BorrowBook.Response<*> =
+        when (val result = library.borrow(request.path.id)) {
+            is LoanResult.Ok -> BorrowBook.Response200(result.book)
+            LoanResult.NotFound -> BorrowBook.Response404(notFound(request.path.id))
+            LoanResult.Conflict -> BorrowBook.Response409(ApiError(code = 409, message = "..."))
+        }
+    // ...
+}
+```
+
+The routing comes from the generated annotations, so the controller contains no `@RequestMapping`.
+The return type also follows the contract: a handler can only return the variants its endpoint
+declares, so `AddBook` cannot answer with a `404`. The ISBN check calls the `validate()` that
+Wirespec generated from the regex in `library.ws`.
+
+Try it:
+
+```shell
+./gradlew bootRun
+
+curl -i -X POST localhost:8080/books -H 'Content-Type: application/json' \
+  -d '{"isbn":"9780441013593","title":"Dune","author":"Frank Herbert","genre":"FICTION"}'
+curl -i 'localhost:8080/books?genre=FICTION'
+curl -i -X POST localhost:8080/books/<id>/loan     # 200, then 409 the second time
+```
