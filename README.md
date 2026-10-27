@@ -87,3 +87,45 @@ Everything else is generated from this file: the production code, a client and, 
 on, the test DSL. The regexes and the declared statuses also come back later. The test
 generators produce values that match the regexes, and every response a test receives is
 checked against the statuses declared here.
+
+## Step 2: Generate Kotlin with the Gradle plugin
+
+A plain Kotlin/JVM Gradle build plus the Wirespec Gradle plugin. The plugin provides the
+`CompileWirespecTask`; [`build.gradle.kts`](build.gradle.kts) registers one and adds its
+output to the main source set:
+
+```kotlin
+val wirespec = tasks.register<CompileWirespecTask>("wirespec") {
+    input = layout.projectDirectory.dir("src/main/wirespec")
+    output = layout.buildDirectory.dir("generated/wirespec")
+    packageName = "community.flock.library.contract"
+    languages = listOf(Language.Kotlin)
+}
+
+kotlin.sourceSets.main {
+    kotlin.srcDir(wirespec.flatMap { it.output })
+}
+```
+
+Because the source directory is the task's output, Gradle runs `wirespec` before
+`compileKotlin` without an explicit `dependsOn`. Run it with:
+
+```shell
+./gradlew build
+```
+
+and look in `build/generated/wirespec/community/flock/library/contract`:
+
+| Package      | Contains                                                                                                    |
+|--------------|-------------------------------------------------------------------------------------------------------------|
+| `model`      | `data class`es and `enum`s; refined types are wrappers with a `validate()` that checks the regex            |
+| `endpoint`   | One `object` per endpoint: `Request`, a sealed `Response` per status, a `Handler` interface, (de)serializers |
+| `client`     | A client per endpoint and a `Client` for all of them, on top of a pluggable `Wirespec.Transportation`        |
+| `generator`  | A `<Type>Generator` per type that builds values from a `Wirespec.Generator`; Kotest provides one in step 6  |
+
+The generated code only depends on the small Wirespec runtime (`wirespec-jvm`), which holds the
+interfaces it implements, such as `Wirespec.Endpoint` and `Wirespec.Refined`.
+
+All versions are in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). This project uses
+Wirespec `0.22.5`, Kotlin `2.3.21`, Gradle `9.7.1` and a Java 21 toolchain. The foojay resolver
+in [`settings.gradle.kts`](settings.gradle.kts) downloads that JDK if it is not installed.

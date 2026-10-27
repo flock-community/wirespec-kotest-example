@@ -1,0 +1,11 @@
+[versions]
+kotlin = "2.3.21"
+wirespec = "0.22.5"
+
+[libraries]
+# The Wirespec interfaces the generated code implements (Wirespec.Endpoint, Wirespec.Refined, ...)
+wirespec-runtime = { module = "community.flock.wirespec.integration:wirespec-jvm", version.ref = "wirespec" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+wirespec = { id = "community.flock.wirespec.plugin.gradle", version.ref = "wirespec" }
