@@ -129,3 +129,44 @@ interfaces it implements, such as `Wirespec.Endpoint` and `Wirespec.Refined`.
 All versions are in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). This project uses
 Wirespec `0.22.5`, Kotlin `2.3.21`, Gradle `9.7.1` and a Java 21 toolchain. The foojay resolver
 in [`settings.gradle.kts`](settings.gradle.kts) downloads that JDK if it is not installed.
+
+## Step 3: Turn it into a Spring Boot application
+
+Three additions turn the build into a Spring Boot application:
+
+1. **Plugins and dependencies**: the Spring Boot and `kotlin-spring` plugins, the Spring Boot BOM as a
+   Gradle `platform(...)`, `spring-boot-starter-web`, `kotlinx-coroutines-reactor` (the generated
+   handlers are `suspend` functions) and the
+   [Wirespec Spring integration](https://wirespec.io/docs/integration/spring) (`spring-jvm`).
+2. **An IR extension on the compile task**: `SpringMappingAnnotationsExtension` adds Spring's mapping
+   annotations to every generated `Handler` interface:
+
+   ```kotlin
+   tasks.register<CompileWirespecTask>("wirespec") {
+       // ...
+       extensionClasses = listOf(SpringMappingAnnotationsExtension::class.java)
+   }
+   ```
+
+   ```kotlin
+   // build/generated/.../endpoint/AddBook.kt
+   interface Handler : Wirespec.Handler {
+       @org.springframework.web.bind.annotation.PostMapping("/books")
+       suspend fun addBook(request: Request): Response<*>
+   }
+   ```
+
+   The extension ships with the Gradle plugin, so the build script needs no extra `buildscript`
+   classpath entries.
+3. **The application class**: [`LibraryApplication`](src/main/kotlin/community/flock/library/LibraryApplication.kt).
+   `@EnableWirespecController` registers the argument resolver that turns an HTTP request into the
+   generated `Request` type. It also registers a `Wirespec.Serialization` bean, which the tests use
+   from step 7 on.
+
+`./gradlew bootRun` starts the service. No handler is implemented yet, so every endpoint still
+answers `404`.
+
+> The Spring Boot BOM is imported with Gradle's `platform(...)`, not with the
+> `io.spring.dependency-management` plugin. A platform only adds version constraints and lets Gradle
+> resolve conflicts as usual. The dependency-management plugin enforces the BOM versions instead,
+> and would downgrade for example `kotlinx-coroutines` below the version Kotest and Wirespec need.

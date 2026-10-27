@@ -1,11 +1,20 @@
 [versions]
 kotlin = "2.3.21"
+spring-boot = "3.5.16"
 wirespec = "0.22.5"
 
 [libraries]
 # The Wirespec interfaces the generated code implements (Wirespec.Endpoint, Wirespec.Refined, ...)
 wirespec-runtime = { module = "community.flock.wirespec.integration:wirespec-jvm", version.ref = "wirespec" }
+# Routes Spring MVC requests to the generated handlers and provides a Wirespec.Serialization bean
+wirespec-spring = { module = "community.flock.wirespec.integration:spring-jvm", version.ref = "wirespec" }
+
+# Versions come from the Spring Boot BOM
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 wirespec = { id = "community.flock.wirespec.plugin.gradle", version.ref = "wirespec" }
