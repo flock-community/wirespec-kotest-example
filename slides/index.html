@@ -90,11 +90,28 @@
           <div class="box test"><em>Kotest DSL</em>: <code>generate</code> · <code>call</code> · <code>mock</code> · <code>send</code></div>
         </div>
       </div>
-      <p class="lead" style="margin-top: 70px">Production code and test code from one source of truth.</p>
+      <p class="lead" style="margin-top: 28px">Production code and test code from one source of truth.</p>
+      <div class="standards">
+        <h3>Compatible with the standards you already use</h3>
+        <div class="row">
+          <span class="std-label">Start from</span>
+          <span class="std">OpenAPI 2</span><span class="std">OpenAPI 3</span><span class="std">AsyncAPI</span><span class="std">Avro</span><span class="std">GraphQL</span>
+          <span class="std-note">converted to Wirespec, Kotest DSL included</span>
+        </div>
+        <div class="row">
+          <span class="std-label">Generate</span>
+          <span class="std">OpenAPI 2</span><span class="std">OpenAPI 3</span><span class="std">Avro</span>
+          <span class="std lang">Kotlin</span><span class="std lang">Java</span><span class="std lang">Scala</span><span class="std lang">TypeScript</span><span class="std lang">Python</span><span class="std lang">Rust</span>
+        </div>
+      </div>
       <aside class="notes">
         Wirespec compiles the contract to Kotlin. IR extensions add to what is generated: one puts the
         Spring annotations on the handlers, the other generates a typed test DSL built on Kotest
         generators. That last one is what this talk is about.
+        Wirespec works with the standards you already use. It converts OpenAPI 2 and 3, AsyncAPI, Avro
+        and GraphQL into Wirespec, and emits OpenAPI 2 and 3 and Avro again, next to code in six
+        languages. Already have an OpenAPI JSON file? The Gradle plugin's ConvertWirespecTask takes it as
+        input and generates the same Kotlin code and Kotest DSL, without writing a .ws file first.
       </aside>
     </section>
 
