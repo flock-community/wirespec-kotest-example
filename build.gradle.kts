@@ -32,6 +32,15 @@ dependencies {
 
     implementation(libs.wirespec.runtime)
     implementation(libs.wirespec.spring)
+
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotest.extensions.spring)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 val wirespec = tasks.register<CompileWirespecTask>("wirespec") {

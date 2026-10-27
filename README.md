@@ -212,3 +212,54 @@ curl -i -X POST localhost:8080/books -H 'Content-Type: application/json' \
 curl -i 'localhost:8080/books?genre=FICTION'
 curl -i -X POST localhost:8080/books/<id>/loan     # 200, then 409 the second time
 ```
+
+## Step 5: A first Kotest integration test, the classic way
+
+Add Kotest (`kotest-runner-junit5`, `kotest-assertions-core`), the
+[Kotest Spring extension](https://kotest.io/docs/extensions/spring.html) and
+`spring-boot-starter-test`, and register the extension once for the whole test suite in
+[`ProjectConfig`](src/test/kotlin/community/flock/library/ProjectConfig.kt):
+
+```kotlin
+class ProjectConfig : AbstractProjectConfig() {
+    override val extensions: List<Extension> = listOf(SpringExtension())
+}
+```
+
+[`kotest.properties`](src/test/resources/kotest.properties) tells Kotest where that class is
+(`kotest.framework.config.fqn`). This works for Gradle and for the IntelliJ Kotest plugin alike.
+
+[`BookApiTest`](src/test/kotlin/community/flock/library/BookApiTest.kt) is written the way many
+Spring Boot integration tests are: a `TestRestTemplate`, JSON in a string and JsonPath to read the
+answer.
+
+```kotlin
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+class BookApiTest(rest: TestRestTemplate) : FunSpec({
+
+    fun addBook(): String {
+        val json = """{ "isbn": "9780441013593", "title": "Dune", "author": "Frank Herbert", "genre": "FICTION" }"""
+        val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
+        val response = rest.postForEntity("/books", HttpEntity(json, headers), String::class.java)
+        response.statusCode shouldBe HttpStatus.CREATED
+        return JsonPath.read(response.body, "$.id")
+    }
+
+    test("a book can be added and fetched back") {
+        val response = rest.getForEntity("/books/${addBook()}", String::class.java)
+        response.statusCode shouldBe HttpStatus.OK
+        JsonPath.read<String>(response.body, "$.title") shouldBe "Dune"
+    }
+})
+```
+
+It works, but nothing in it is connected to the contract we started with:
+
+- The request body is a hand-written string. Rename a field in `library.ws` and the test still
+  compiles, but now sends the wrong JSON.
+- Every test needs a complete, valid book, even when it only cares about one field, and every test
+  uses the same Dune.
+- The response is read with untyped JsonPath strings, and nothing checks that a status code or body
+  is one the contract declares.
+
+The next steps solve these with code generated from the same contract.

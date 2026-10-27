@@ -1,4 +1,5 @@
 [versions]
+kotest = "6.1.11"
 kotlin = "2.3.21"
 spring-boot = "3.5.16"
 wirespec = "0.22.5"
@@ -12,6 +13,12 @@ wirespec-spring = { module = "community.flock.wirespec.integration:spring-jvm", 
 # Versions come from the Spring Boot BOM
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
 kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+
+# Kotest: the JUnit 5 runner, the assertions and the Spring extension
+kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+kotest-extensions-spring = { module = "io.kotest:kotest-extensions-spring", version.ref = "kotest" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
