@@ -41,6 +41,23 @@ cd wirespec-kotest-example
 git checkout step-01      # ... up to step-10, or stay on main for the end result
 ```
 
+## Slides
+
+The slides for the talk introduce the story and walk through every step with its code:
+**[flock-community.github.io/wirespec-kotest-example](https://flock-community.github.io/wirespec-kotest-example/)**
+
+They are a [reveal.js](https://revealjs.com) deck in the Flock style, in [`slides/`](slides). reveal.js
+and the fonts are included in the folder, so the deck also works offline: open
+`slides/index.html` in a browser. Press `S` for the speaker notes, `F` for full screen and `O`
+for the overview. To get a PDF, add `?print-pdf` to the URL and print the page.
+
+GitHub Pages serves the `gh-pages` branch, which holds a copy of `slides/`. After changing the
+slides on `main`, publish them with:
+
+```shell
+git subtree push --prefix slides origin gh-pages
+```
+
 ---
 
 ## Step 1: Write the contract

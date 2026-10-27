@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>From contract to tested service · Wirespec × Kotest</title>
+  <meta name="description" content="From one Wirespec contract to a Spring Boot service with Kotest integration tests, in 10 commits.">
+  <link rel="icon" type="image/svg+xml" href="assets/wirespec-mark.svg">
+  <link rel="stylesheet" href="vendor/reveal.js-5.2.1/dist/reset.css">
+  <link rel="stylesheet" href="vendor/reveal.js-5.2.1/dist/reveal.css">
+  <link rel="stylesheet" href="css/flock.css">
+</head>
+<body>
+<div class="reveal">
+  <div class="deck-footer">
+    <img src="assets/flock-logo.png" alt="Flock.">
+    <span class="label"></span>
+  </div>
+
+  <div class="slides">
+
+    <!-- ============================================================ Intro -->
+
+    <section class="title-slide" data-state="title">
+      <div class="frame">
+        <div class="brand-row">
+          <img src="assets/flock-logo.png" alt="Flock.">
+          <img src="assets/wirespec-logo.svg" alt="Wirespec">
+        </div>
+        <div>
+          <p class="kicker">Wirespec × Kotest</p>
+          <h1>From contract<br>to <span class="hl">tested</span> service</h1>
+          <p class="lead">One Wirespec file. A Spring Boot service and Kotest integration tests, both generated from that contract. In 10 commits.</p>
+        </div>
+        <p class="repo">github.com/flock-community/wirespec-kotest-example</p>
+      </div>
+      <aside class="notes">
+        Welcome. This talk follows a repository that goes from one Wirespec contract to a Spring Boot
+        service with Kotest integration tests, one commit per step. Every step is tagged, so you can
+        check out any step afterwards and run it.
+      </aside>
+    </section>
+
+    <section data-label="the story">
+      <p class="kicker">The story</p>
+      <h2>A small library service</h2>
+      <div class="cols four cards">
+        <div class="card"><h3>Books</h3><p>Put books on the shelf and list them by genre.</p><p class="caption">REST</p></div>
+        <div class="card"><h3>Loans</h3><p>Borrow and return. A <code>409</code> when that is not allowed.</p><p class="caption">Business rules</p></div>
+        <div class="card"><h3>Ratings</h3><p>Averaged from the reviews on an external review platform.</p><p class="caption">Downstream HTTP</p></div>
+        <div class="card"><h3>Donations</h3><p>Donated books arrive on a Kafka topic.</p><p class="caption">Async messaging</p></div>
+      </div>
+      <p class="lead" style="margin-top: 40px">Every part of it is described in a Wirespec contract, and tested from that same contract.</p>
+      <aside class="notes">
+        The example is deliberately small but touches everything a real service has: a REST API, a
+        business rule that can fail, a call to another team's service, and asynchronous messaging.
+      </aside>
+    </section>
+
+    <section data-label="the problem">
+      <p class="kicker">The problem</p>
+      <h2>Integration tests drift away from the API</h2>
+      <div class="cols cards big">
+        <div class="card fragment"><h3>Hand-written JSON</h3><p>Rename a field in the API and the test still compiles. It just sends the wrong body.</p></div>
+        <div class="card fragment"><h3>The same test data everywhere</h3><p>Every test adds Dune by Frank Herbert. Edge cases never show up.</p></div>
+        <div class="card fragment"><h3>Untyped assertions</h3><p>JsonPath strings and raw status codes instead of the types the API defines.</p></div>
+        <div class="card fragment"><h3>Nobody checks the contract</h3><p>An undeclared <code>500</code> or a body of the wrong shape slips through if no assertion looks at it.</p></div>
+      </div>
+      <aside class="notes">
+        Most of us have written integration tests like this. They work, but they are not connected to
+        the API they test. We will see such a test in step 5.
+      </aside>
+    </section>
+
+    <section data-label="the idea">
+      <p class="kicker">The idea</p>
+      <h2>What if the tests came from the contract too?</h2>
+      <div class="flow">
+        <div class="box contract">library.ws</div>
+        <div class="arrow">→</div>
+        <div class="box">
+          <h3>Wirespec Gradle plugin</h3>
+          <span class="chip">SpringMappingAnnotationsExtension</span>
+          <span class="chip">KotestDslExtension</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="outputs">
+          <div class="box">Models · endpoints · clients</div>
+          <div class="box">Spring handler interfaces</div>
+          <div class="box test"><em>Kotest DSL</em>: <code>generate</code> · <code>call</code> · <code>mock</code> · <code>send</code></div>
+        </div>
+      </div>
+      <p class="lead" style="margin-top: 70px">Production code and test code from one source of truth.</p>
+      <aside class="notes">
+        Wirespec compiles the contract to Kotlin. IR extensions add to what is generated: one puts the
+        Spring annotations on the handlers, the other generates a typed test DSL built on Kotest
+        generators. That last one is what this talk is about.
+      </aside>
+    </section>
+
+    <section data-label="the journey">
+      <p class="kicker">The journey</p>
+      <h2>10 commits</h2>
+      <div class="roadmap">
+        <div><span>1</span>Write the contract</div>
+        <div><span>6</span>Generate the Kotest DSL</div>
+        <div><span>2</span>Generate Kotlin with Gradle</div>
+        <div><span>7</span>Scenario tests over real HTTP</div>
+        <div><span>3</span>Turn it into a Spring Boot app</div>
+        <div><span>8</span>Property-based integration tests</div>
+        <div><span>4</span>Implement the generated handlers</div>
+        <div><span>9</span>Mock a downstream service</div>
+        <div><span>5</span>A first test, the classic way</div>
+        <div><span>10</span>Test an async Kafka channel</div>
+      </div>
+      <p class="note">Every step is a commit and a tag: <code>git checkout step-01</code> … <code>step-10</code></p>
+      <aside class="notes">
+        Steps 1 to 4 build the service, step 5 tests it the classic way, and steps 6 to 10 introduce the
+        Kotest integration piece by piece.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 1 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">01</p>
+        <h2>Write the contract</h2>
+        <p>One file describes the whole API. No code yet.</p>
+        <p><span class="pill">git checkout step-01</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-01 · write the contract">
+      <p class="kicker">Step 01</p>
+      <h2>library.ws</h2>
+      <div class="cols wide-right">
+        <pre><code class="language-wirespec" data-trim data-line-numbers="|1|3-5|7-12"><script type="text/template">
+type Isbn = String(/^97[89][0-9]{10}$/g)
+
+enum Genre {
+  FICTION, NON_FICTION, SCIENCE, CHILDREN
+}
+
+type BookInput {
+  isbn: Isbn,
+  title: String,
+  author: String,
+  genre: Genre
+}
+        </script></code></pre>
+        <pre><code class="language-wirespec" data-trim><script type="text/template">
+endpoint ListBooks GET /books ? {genre: Genre?} -> {
+  200 -> Book[]
+}
+
+endpoint AddBook POST BookInput /books -> {
+  201 -> Book
+  400 -> ApiError
+}
+
+endpoint BorrowBook POST /books/{id: BookId}/loan -> {
+  200 -> Book
+  404 -> ApiError
+  409 -> ApiError
+}
+        </script></code></pre>
+      </div>
+      <p class="caption">Refined types with a regex, an enum, records, and endpoints with path and query parameters, a body and every status they can answer.</p>
+      <aside class="notes">
+        Isbn is a refined type: a String constrained by a regex. Remember the regex and the declared
+        statuses; both come back later. The test generators produce values that match the regex, and
+        every response a test receives is checked against these statuses.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 2 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">02</p>
+        <h2>Generate Kotlin</h2>
+        <p>The Wirespec Gradle plugin turns the contract into Kotlin on every build.</p>
+        <p><span class="pill">git checkout step-02</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-02 · generate kotlin">
+      <p class="kicker">Step 02</p>
+      <h2>A Gradle task generates the code</h2>
+      <div class="cols wide-left">
+        <div>
+          <span class="file">build.gradle.kts</span>
+          <pre><code class="language-kotlin" data-trim><script type="text/template">
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.wirespec)
+}
+
+val wirespec = tasks.register<CompileWirespecTask>("wirespec") {
+    input = layout.projectDirectory.dir("src/main/wirespec")
+    output = layout.buildDirectory.dir("generated/wirespec")
+    packageName = "community.flock.library.contract"
+    languages = listOf(Language.Kotlin)
+}
+
+kotlin.sourceSets.main {
+    kotlin.srcDir(wirespec.flatMap { it.output })
+}
+          </script></code></pre>
+        </div>
+        <table class="grid">
+          <tr><th>Package</th><th>Contains</th></tr>
+          <tr><td><code>model</code></td><td>Data classes and enums; refined types with a <code>validate()</code></td></tr>
+          <tr><td><code>endpoint</code></td><td>Per endpoint: <code>Request</code>, a sealed <code>Response</code>, <code>Handler</code>, <code>Call</code></td></tr>
+          <tr><td><code>client</code></td><td>Clients on a pluggable <code>Wirespec.Transportation</code></td></tr>
+          <tr><td><code>generator</code></td><td>A <code>&lt;Type&gt;Generator</code> per type, driven by a <code>Wirespec.Generator</code></td></tr>
+        </table>
+      </div>
+      <p class="caption">The source directory is the task's output, so Gradle runs <code>wirespec</code> before <code>compileKotlin</code> without a <code>dependsOn</code>.</p>
+      <aside class="notes">
+        The plugin provides the CompileWirespecTask. Adding its output as a source directory is all the
+        wiring needed. Point out the generator package: it is the hook the Kotest integration uses in
+        step 6.
+      </aside>
+    </section>
+
+    <section data-label="step-02 · generate kotlin">
+      <p class="kicker">Step 02</p>
+      <h2>What the generator writes</h2>
+      <div class="cols">
+        <div>
+          <span class="file">model/Isbn.kt</span>
+          <pre><code class="language-kotlin" data-trim><script type="text/template">
+data class Isbn(
+  override val value: String
+) : Wirespec.Refined<String> {
+  override fun validate(): Boolean =
+    Regex("""^97[89][0-9]{10}$""").matches(value)
+  override fun toString(): String =
+    value
+}
+          </script></code></pre>
+        </div>
+        <div>
+          <span class="file">endpoint/AddBook.kt (abridged)</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+object AddBook : Wirespec.Endpoint {
+  data class Request(..., override val body: BookInput)
+  sealed interface Response<T : Any> : Wirespec.Response<T>
+  data class Response201(..., override val body: Book)
+  data class Response400(..., override val body: ApiError)
+
+  fun interface Handler : Wirespec.Handler {
+    suspend fun addBook(request: Request): Response<*>
+  }
+  fun interface Call : Wirespec.Call {
+    suspend fun addBook(body: BookInput): Response<*>
+  }
+}
+          </script></code></pre>
+        </div>
+      </div>
+      <p class="caption">The generated code only needs the small Wirespec runtime (<code>wirespec-jvm</code>).</p>
+      <aside class="notes">
+        Refined types become wrappers with a validate() that checks the regex. Each endpoint becomes an
+        object with a sealed Response per declared status, a Handler for the server side and a Call
+        for the client side.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 3 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">03</p>
+        <h2>Spring Boot</h2>
+        <p>Plug the generated handlers into Spring MVC.</p>
+        <p><span class="pill">git checkout step-03</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-03 · spring boot">
+      <p class="kicker">Step 03</p>
+      <h2>An IR extension adds the Spring annotations</h2>
+      <div class="cols wide-left">
+        <div>
+          <span class="file">build.gradle.kts</span>
+          <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|2|5|8-11"><script type="text/template">
+dependencies {
+    implementation(platform(SpringBootPlugin.BOM_COORDINATES))
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.kotlinx.coroutines.reactor)
+    implementation(libs.wirespec.spring)
+}
+
+tasks.register<CompileWirespecTask>("wirespec") {
+    // ...
+    extensionClasses = listOf(SpringMappingAnnotationsExtension::class.java)
+}
+          </script></code></pre>
+          <p class="note">The Spring Boot BOM is a Gradle <code>platform(...)</code>: it adds constraints instead of forcing versions, so <code>kotlinx-coroutines</code> and Jackson are not downgraded.</p>
+        </div>
+        <div>
+          <span class="file">generated: endpoint/AddBook.kt</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+interface Handler : Wirespec.Handler {
+    @PostMapping("/books")
+    suspend fun addBook(request: Request): Response<*>
+}
+          </script></code></pre>
+          <span class="file">LibraryApplication.kt</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+@SpringBootApplication
+@EnableWirespecController
+class LibraryApplication
+
+fun main(args: Array<String>) {
+    runApplication<LibraryApplication>(*args)
+}
+          </script></code></pre>
+        </div>
+      </div>
+      <aside class="notes">
+        Two IR extensions ship with the Gradle plugin, so no buildscript classpath is needed.
+        @EnableWirespecController maps requests to the generated Request types and registers a
+        Wirespec.Serialization bean, which the tests reuse from step 7 on.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 4 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">04</p>
+        <h2>Implement the handlers</h2>
+        <p>The compiler keeps the controller honest.</p>
+        <p><span class="pill">git checkout step-04</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-04 · implement the handlers">
+      <p class="kicker">Step 04</p>
+      <h2>The controller implements the generated handlers</h2>
+      <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|1-3|5-8|10-15"><script type="text/template">
+@RestController
+class BookController(private val library: Library) :
+    ListBooks.Handler, AddBook.Handler, GetBook.Handler, BorrowBook.Handler, ReturnBook.Handler {
+
+    override suspend fun addBook(request: AddBook.Request): AddBook.Response<*> = when {
+        request.body.isbn.validate() -> AddBook.Response201(library.add(request.body))
+        else -> AddBook.Response400(ApiError(code = 400, message = "Invalid ISBN: ${request.body.isbn}"))
+    }
+
+    override suspend fun borrowBook(request: BorrowBook.Request): BorrowBook.Response<*> =
+        when (val result = library.borrow(request.path.id)) {
+            is LoanResult.Ok -> BorrowBook.Response200(result.book)
+            LoanResult.NotFound -> BorrowBook.Response404(notFound(request.path.id))
+            LoanResult.Conflict -> BorrowBook.Response409(ApiError(code = 409, message = "..."))
+        }
+}
+      </script></code></pre>
+      <div class="cols three cards">
+        <div class="card"><p>No <code>@RequestMapping</code>: the routing comes from the contract.</p></div>
+        <div class="card"><p><code>AddBook</code> cannot answer <code>404</code>. It does not compile.</p></div>
+        <div class="card"><p><code>validate()</code> is generated from the ISBN regex.</p></div>
+      </div>
+      <aside class="notes">
+        Show that a handler can only return the variants its endpoint declares. Demo with bootRun and
+        curl: POST /books, then POST /books/{id}/loan twice gives 200 and then 409.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 5 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">05</p>
+        <h2>The classic test</h2>
+        <p>How many Spring Boot integration tests look today.</p>
+        <p><span class="pill">git checkout step-05</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-05 · the classic test">
+      <p class="kicker">Step 05</p>
+      <h2>TestRestTemplate, JSON strings and JsonPath</h2>
+      <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|5-6|10|15-16"><script type="text/template">
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+class BookApiTest(rest: TestRestTemplate) : FunSpec({
+
+    fun addBook(): String {
+        val json = """{ "isbn": "9780441013593", "title": "Dune",
+                       "author": "Frank Herbert", "genre": "FICTION" }"""
+        val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
+        val response = rest.postForEntity("/books", HttpEntity(json, headers), String::class.java)
+        response.statusCode shouldBe HttpStatus.CREATED
+        return JsonPath.read(response.body, "$.id")
+    }
+
+    test("a book can be added and fetched back") {
+        val response = rest.getForEntity("/books/${addBook()}", String::class.java)
+        response.statusCode shouldBe HttpStatus.OK
+        JsonPath.read<String>(response.body, "$.title") shouldBe "Dune"
+    }
+})
+      </script></code></pre>
+      <p class="caption">Kotest with the Spring extension, registered once in <code>ProjectConfig</code>. It works, but nothing in it is connected to <code>library.ws</code>.</p>
+      <aside class="notes">
+        This is where most projects are. Step through the highlights: a JSON string, JsonPath to read
+        the id, and the same Dune in every test. The rest of the talk replaces this with code
+        generated from the contract.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 6 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">06</p>
+        <h2>Generate the Kotest DSL</h2>
+        <p>One more IR extension, and the contract becomes a test DSL.</p>
+        <p><span class="pill">git checkout step-06</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-06 · generate the kotest dsl">
+      <p class="kicker">Step 06</p>
+      <h2>KotestDslExtension generates a typed DSL</h2>
+      <div class="cols" style="grid-template-columns: 1fr 1.6fr">
+        <div>
+          <span class="file">build.gradle.kts</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+extensionClasses = listOf(
+    SpringMappingAnnotationsExtension::class.java,
+    KotestDslExtension::class.java,
+)
+          </script></code></pre>
+          <p class="note">A <code>Sync</code> task moves the generated <code>kotest</code> package to the test source set, so Kotest stays out of the production jar.</p>
+        </div>
+        <table class="grid">
+          <tr><th>Generated</th><th>Gives you</th></tr>
+          <tr><td><code>BookInput.generate { }</code></td><td>an <code>Arb&lt;BookInput&gt;</code>: valid books, pinning what you set</td></tr>
+          <tr><td><code>AddBook.generate.request { }</code></td><td>an <code>Arb</code> of requests with <code>path</code>, <code>query</code>, <code>body</code> blocks</td></tr>
+          <tr><td><code>AddBook.generate.response201 { }</code></td><td>an <code>Arb</code> per declared response</td></tr>
+          <tr><td><code>.call()</code></td><td>sends a generated request, returns the typed response</td></tr>
+          <tr><td><code>.mock { }</code></td><td>stubs a downstream service with a generated response</td></tr>
+          <tr><td><code>.send()</code></td><td>publishes a generated message to a channel</td></tr>
+        </table>
+      </div>
+      <aside class="notes">
+        One file per type and per endpoint lands in the kotest package. Everything returns a Kotest Arb,
+        which is what makes the rest possible. To hang BookInput.generate on the type, the extension
+        adds an empty companion object to each record; the models stay free of Kotest.
+      </aside>
+    </section>
+
+    <section data-label="step-06 · generate the kotest dsl">
+      <p class="kicker">Step 06</p>
+      <h2>Generated data, no Spring needed</h2>
+      <div class="cols wide-left">
+        <div>
+          <span class="file">GeneratedDataTest.kt</span>
+          <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|1-5|7-14"><script type="text/template">
+test("every generated book satisfies the contract") {
+    checkAll(BookInput.generate()) { book ->
+        book.isbn.validate() shouldBe true
+    }
+}
+
+test("pin the fields a test is about, generate the rest") {
+    val book = BookInput.generate {
+        title("Dune")
+        genre(Genre.FICTION)
+    }.draw()
+
+    book.title shouldBe "Dune"
+}
+          </script></code></pre>
+        </div>
+        <div>
+          <span class="file">BookInput.generate().draw()</span>
+          <pre class="tight output ok"><code class="language-plaintext" data-trim><script type="text/template">
+BookInput(
+  isbn   = 9797433818565,
+  title  = title-Y4xwT7n9,
+  author = author-YJMi5uf3,
+  genre  = NON_FICTION
+)
+          </script></code></pre>
+          <span class="file">field slots</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+BookInput.generate {
+    title("Dune")              // a fixed value
+    genre = Arb.enum<Genre>()  // a Kotest Arb
+}
+          </script></code></pre>
+        </div>
+      </div>
+      <aside class="notes">
+        ISBNs are drawn from the regex, enums from their entries, and strings get readable values that
+        start with the field name. The lower-level API, kotestWirespecKotlinGenerator(seed), drives the
+        generators from step 2 and is deterministic per seed.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 7 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">07</p>
+        <h2>Scenario tests over real HTTP</h2>
+        <p>Point the DSL at the running application.</p>
+        <p><span class="pill">git checkout step-07</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-07 · scenario tests over real http">
+      <p class="kicker">Step 07</p>
+      <h2>Tell the DSL how to reach the app</h2>
+      <span class="file">LibraryApi.kt</span>
+      <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|2|3"><script type="text/template">
+val libraryApi = WirespecEndpointExtension(
+    serialization = { serialization() },
+    transportation = { HttpTransportation("http://localhost:${property("local.server.port")}") },
+)
+
+suspend fun serialization(): Wirespec.Serialization = applicationContext().getBean<Wirespec.Serialization>()
+      </script></code></pre>
+      <span class="file">BookApiTest.kt</span>
+      <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+class BookApiTest : FunSpec({
+    extension(libraryApi)
+    // tests
+})
+      </script></code></pre>
+      <div class="cols">
+        <p class="note"><strong>Serialization</strong>: the application's own <code>Wirespec.Serialization</code> bean, so tests write and read JSON exactly like the service.</p>
+        <p class="note"><strong>Transportation</strong>: <code>HttpTransportation</code> from the Wirespec JVM integration, on the JDK <code>HttpClient</code>, to the random port.</p>
+      </div>
+      <aside class="notes">
+        WirespecEndpointExtension is a Kotest extension. It puts the serialization and the transport in
+        the coroutine context of each test, and call() picks them up. The spec registers it with
+        extension(libraryApi).
+      </aside>
+    </section>
+
+    <section data-label="step-07 · scenario tests over real http">
+      <p class="kicker">Step 07</p>
+      <h2>Before and after</h2>
+      <div class="cols">
+        <div>
+          <span class="file">step 5 · classic</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+val json = """{ "isbn": "9780441013593",
+  "title": "Dune", "author": "Frank Herbert",
+  "genre": "FICTION" }"""
+val response = rest.postForEntity(
+    "/books", HttpEntity(json, headers), String::class.java)
+response.statusCode shouldBe HttpStatus.CREATED
+val id = JsonPath.read<String>(response.body, "$.id")
+
+val fetched = rest.getForEntity("/books/$id", String::class.java)
+fetched.statusCode shouldBe HttpStatus.OK
+JsonPath.read<String>(fetched.body, "$.title") shouldBe "Dune"
+          </script></code></pre>
+        </div>
+        <div>
+          <span class="file">step 7 · Wirespec DSL</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+val added = AddBook.generate.request {
+    body { title("Dune") }
+}.call()
+added.shouldBeInstanceOf<AddBook.Response201>()
+
+val fetched = GetBook.generate.request {
+    path { id(added.body.id) }
+}.call()
+fetched.shouldBeInstanceOf<GetBook.Response200>()
+
+fetched.body shouldBe added.body
+          </script></code></pre>
+        </div>
+      </div>
+      <ul class="check small">
+        <li class="fragment">No JSON, no URLs: rename a field in <code>library.ws</code> and the test stops compiling.</li>
+        <li class="fragment">Only the title is pinned. ISBN, author and genre are generated, and valid.</li>
+        <li class="fragment"><code>call()</code> returns the sealed <code>Response</code>; <code>shouldBeInstanceOf</code> narrows it to a type.</li>
+      </ul>
+      <aside class="notes">
+        The same test, side by side. The scenario only states what it is about: a book called Dune.
+        Everything else comes from the generators, so every run uses different valid data.
+      </aside>
+    </section>
+
+    <section data-label="step-07 · scenario tests over real http">
+      <p class="kicker">Step 07</p>
+      <h2>Every response is checked against the contract</h2>
+      <p class="small muted">When <code>GetBook</code> throws instead of answering <code>404</code>, the test fails, even though no assertion looks at the status:</p>
+      <pre class="tight output"><code class="language-plaintext" data-trim><script type="text/template">
+java.lang.AssertionError: GetBook failed (wirespec seed=1872276388795):
+  [GetBook] UndeclaredStatus: status 500 is not declared by the contract. Declared: [200, 404]
+  body={"timestamp":"...","status":500,"error":"Internal Server Error","path":"/books/7c722694-..."}
+      </script></code></pre>
+      <p class="small muted">Unhappy paths are still easy. Pin an invalid value on purpose:</p>
+      <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+test("an invalid ISBN is rejected") {
+    AddBook.generate.request { body { isbn("not-an-isbn") } }.call()
+        .shouldBeInstanceOf<AddBook.Response400>()
+}
+      </script></code></pre>
+      <aside class="notes">
+        An undeclared status, or a body that does not deserialize into the declared type, fails the
+        test. The message names the endpoint and prints the seed of the generated data.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 8 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">08</p>
+        <h2>Property-based integration tests</h2>
+        <p>Everything is a Kotest <code style="color: inherit">Arb</code>, so <code style="color: inherit">checkAll</code> works against the running service.</p>
+        <p><span class="pill">git checkout step-08</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-08 · property-based tests">
+      <p class="kicker">Step 08</p>
+      <h2>checkAll against the running service</h2>
+      <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+test("books of every genre can be listed by that genre") {
+    checkAll(Exhaustive.enum<Genre>()) { genre ->
+        val book = addBook { genre(genre) }
+
+        ListBooks.generate.request { query { genre(genre) } }.call()
+            .shouldBeInstanceOf<ListBooks.Response200>()
+            .body.shouldContain(book)
+            .shouldForAll { it.genre shouldBe genre }
+    }
+}
+      </script></code></pre>
+      <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+test("titles and authors survive the round trip, whatever characters they contain") {
+    val text = Arb.string(1..40, Arb.choice(Codepoint.printableAscii(), Codepoint.cyrillic(), Codepoint.egyptianHieroglyphs()))
+
+    checkAll(50, text, text) { anyTitle, anyAuthor ->
+        val book = addBook { title(anyTitle); author(anyAuthor) }
+        GetBook.generate.request { path { id(book.id) } }.call()
+            .shouldBeInstanceOf<GetBook.Response200>()
+            .body shouldBe book
+    }
+}
+      </script></code></pre>
+      <aside class="notes">
+        addBook is a three-line helper around AddBook.generate.request { }.call(). The first property is
+        exhaustive over the enum; the second sends titles in Cyrillic and Egyptian hieroglyphs, which a
+        hand-written test never would.
+      </aside>
+    </section>
+
+    <section data-label="step-08 · property-based tests">
+      <p class="kicker">Step 08</p>
+      <h2>A stateful property, shrunk against the service</h2>
+      <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|2|5-11"><script type="text/template">
+test("a book can only be borrowed when it is available and only be returned when it is on loan") {
+    checkAll(25, Arb.list(Arb.enum<LoanAction>(), 1..10)) { actions ->
+        val book = addBook()
+
+        actions.fold(true) { available, action ->
+            val accepted = when (action) {
+                LoanAction.BORROW -> BorrowBook.generate.request { path { id(book.id) } }.call() is BorrowBook.Response200
+                LoanAction.RETURN -> ReturnBook.generate.request { path { id(book.id) } }.call() is ReturnBook.Response200
+            }
+            accepted shouldBe (available == (action == LoanAction.BORROW))
+            available != accepted
+        }
+    }
+}
+      </script></code></pre>
+      <p class="small muted">Break the conflict check in <code>Library</code>, and Kotest finds the smallest sequence that shows it:</p>
+      <pre class="tight output"><code class="language-plaintext" data-trim><script type="text/template">
+Property failed after 3 attempts
+
+    Arg 0: [BORROW, BORROW] (shrunk from [RETURN, RETURN, RETURN, RETURN, RETURN, RETURN, BORROW, BORROW])
+
+Repeat this test by using seed 3571094219167116827
+      </script></code></pre>
+      <aside class="notes">
+        Random sequences of borrow and return actions are checked against a one-line model. Each
+        iteration adds its own book, so iterations do not share state and shrinking works against the
+        running service.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 9 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">09</p>
+        <h2>Mock a downstream service</h2>
+        <p>The review platform publishes its own contract. Use it to stub the platform.</p>
+        <p><span class="pill">git checkout step-09</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-09 · mock a downstream service">
+      <p class="kicker">Step 09</p>
+      <h2>Another team's contract, the same tooling</h2>
+      <div class="cols">
+        <div>
+          <span class="file">reviews.ws</span>
+          <pre class="tight"><code class="language-wirespec" data-trim><script type="text/template">
+type Review {
+  isbn: String,
+  stars: Integer(1, 5),
+  text: String
+}
+
+endpoint GetReviews GET /reviews ? {isbn: String} -> {
+  200 -> Review[]
+}
+          </script></code></pre>
+          <p class="note">The library adds <code>GetRating GET /books/{id}/rating</code>: the average of a book's reviews.</p>
+        </div>
+        <div>
+          <span class="file">ReviewsClient.kt</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+@Component
+class ReviewsClient(
+    serialization: Wirespec.Serialization,
+    @Value("\${reviews.base-url}") baseUrl: String,
+) {
+    private val client =
+        GetReviewsClient(serialization, HttpTransportation(baseUrl))
+
+    suspend fun reviewsOf(isbn: Isbn): List<Review> =
+        when (val response = client.getReviews(isbn.value)) {
+            is GetReviews.Response200 -> response.body
+        }
+}
+          </script></code></pre>
+        </div>
+      </div>
+      <aside class="notes">
+        reviews.ws sits next to library.ws, so the same task generates its models, a client and its
+        test DSL. The application calls the platform through the generated GetReviewsClient.
+      </aside>
+    </section>
+
+    <section data-label="step-09 · mock a downstream service">
+      <p class="kicker">Step 09</p>
+      <h2><code style="color: inherit">.mock { }</code> is the counterpart of <code style="color: inherit">.call()</code></h2>
+      <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|4|8-12|14"><script type="text/template">
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+class RatingTest : FunSpec({
+    extension(libraryApi)
+    extension(WirespecMockExtension(server = reviewService, serialization = { serialization() }))
+
+    test("the rating is the average of the book's reviews") {
+        val book = addBook()
+        val reviews = listOf(5L, 4L, 3L).map { stars ->
+            Review.generate { isbn(book.isbn.value); stars(stars) }.draw()
+        }
+        GetReviews.generate.response200 { body(reviews) }
+            .mock { request -> request.queries.isbn == book.isbn.value }
+
+        ratingOf(book) shouldBe Rating(bookId = book.id, reviews = 3, average = 4.0)
+    }
+})
+      </script></code></pre>
+      <div class="cols three cards">
+        <div class="card"><p><code>call()</code>: generate a request and <em>send</em> it.</p></div>
+        <div class="card"><p><code>mock { }</code>: generate a response and <em>stub</em> it, for every request the typed predicate accepts.</p></div>
+        <div class="card"><p><code>MockServer</code> has two methods. A WireMock version takes about 30 lines.</p></div>
+      </div>
+      <aside class="notes">
+        The predicate receives a typed GetReviews.Request, so it reads request.queries.isbn. The stub
+        is serialized with the application's own serialization, so it sends exactly the JSON the
+        generated client expects.
+      </aside>
+    </section>
+
+    <section data-label="step-09 · mock a downstream service">
+      <p class="kicker">Step 09</p>
+      <h2>Feed the app anything the other contract allows</h2>
+      <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+test("whatever the review platform answers, the average stays within the stars its contract allows") {
+    checkAll(20, Arb.list(Review.generate(), 1..25)) { reviews ->
+        val book = addBook()
+        GetReviews.generate.response200 { body(reviews) }
+            .mock { request -> request.queries.isbn == book.isbn.value }
+
+        val rating = ratingOf(book)
+        rating.average.shouldNotBeNull() shouldBeIn 1.0..5.0
+        rating.average shouldBe (reviews.map { it.stars }.average() plusOrMinus 1e-9)
+    }
+}
+      </script></code></pre>
+      <p class="small muted"><code>Review.generate()</code> respects <code>stars: Integer(1, 5)</code>. And when the app calls the platform in a way no stub accepts, the contract catches it:</p>
+      <pre class="tight output"><code class="language-plaintext" data-trim><script type="text/template">
+java.lang.AssertionError: GetRating failed (wirespec seed=2410745794640): [GetRating] UndeclaredStatus:
+  status 500 is not declared by the contract. Declared: [200, 404]
+      </script></code></pre>
+      <aside class="notes">
+        The downstream contract is a generator for realistic answers. The unmatched stub returns a 404
+        that GetReviews does not declare, the generated client throws, the app answers 500, and the
+        GetRating contract check fails the test.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Step 10 -->
+
+    <section class="divider" data-state="divider" data-background-color="#fcde00">
+      <div class="frame">
+        <p class="number">10</p>
+        <h2>Test an async channel</h2>
+        <p>Donated books arrive over Kafka.</p>
+        <p><span class="pill">git checkout step-10</span></p>
+      </div>
+    </section>
+
+    <section data-label="step-10 · test an async channel">
+      <p class="kicker">Step 10</p>
+      <h2>A channel in the contract, a listener in the app</h2>
+      <span class="file">library.ws</span>
+      <pre><code class="language-wirespec" data-trim><script type="text/template">
+channel BookDonations -> BookInput
+      </script></code></pre>
+      <span class="file">DonationListener.kt</span>
+      <pre><code class="language-kotlin" data-trim><script type="text/template">
+@Component
+class DonationListener(
+    private val library: Library,
+    private val serialization: Wirespec.Serialization,
+) {
+    @KafkaListener(topics = [BOOK_DONATIONS_TOPIC])
+    fun onDonation(message: ByteArray) {
+        serialization.deserializeBody<BookInput>(message, typeOf<BookInput>())
+            .takeIf { it.isbn.validate() }
+            ?.let(library::add)
+    }
+}
+      </script></code></pre>
+      <aside class="notes">
+        Wirespec describes asynchronous messaging too. The application consumes the topic with a plain
+        @KafkaListener and the application's Wirespec.Serialization, and shelves every donation with a
+        valid ISBN.
+      </aside>
+    </section>
+
+    <section data-label="step-10 · test an async channel">
+      <p class="kicker">Step 10</p>
+      <h2><code style="color: inherit">.send()</code> a message, then <code style="color: inherit">eventually</code> check the shelf</h2>
+      <pre class="tight"><code class="language-kotlin" data-trim data-line-numbers="|2|5-8|11|13-15"><script type="text/template">
+@SpringBootTest(webEnvironment = RANDOM_PORT, properties = ["spring.kafka.listener.auto-startup=true"])
+@EmbeddedKafka(partitions = 1, topics = [BOOK_DONATIONS_TOPIC], bootstrapServersProperty = "spring.kafka.bootstrap-servers")
+class DonationTest : FunSpec({
+    extension(libraryApi)
+    extension(WirespecChannelExtension(
+        serialization = { serialization() },
+        transportation = { KafkaChannelTransport(property("spring.kafka.bootstrap-servers")) },
+    ))
+
+    test("a donated book ends up on the shelf") {
+        val donation = BookDonations.generate.message { title("The Hobbit") }.send(BOOK_DONATIONS_TOPIC)
+
+        eventually(15.seconds) {
+            shelf() shouldContain donation    // shelf() lists the books with ListBooks ... .call()
+        }
+    }
+})
+      </script></code></pre>
+      <div class="cols three cards">
+        <div class="card"><p><code>send()</code> returns the message it generated and published.</p></div>
+        <div class="card"><p><code>ChannelTransport</code> has one method. A <code>KafkaProducer</code> version takes about 20 lines.</p></div>
+        <div class="card"><p>No Docker: the Kafka broker and WireMock run inside the test JVM.</p></div>
+      </div>
+      <aside class="notes">
+        The channel DSL covers the sending side. Combined with the endpoint DSL and Kotest's eventually,
+        one test drives Kafka in and checks the result over HTTP.
+      </aside>
+    </section>
+
+    <!-- ============================================================ Wrap-up -->
+
+    <section data-label="recap">
+      <p class="kicker">Recap</p>
+      <h2>One contract, four entry points</h2>
+      <table class="grid" style="font-size: 0.72em">
+        <tr><th style="width: 47%">You write</th><th>It does</th><th>Backed by</th></tr>
+        <tr><td><code>BookInput.generate { title("Dune") }</code></td><td>an <code>Arb</code> of contract-valid values</td><td>plain Kotest</td></tr>
+        <tr><td><code>AddBook.generate.request { }.call()</code></td><td>sends a request, returns the typed response</td><td><code>WirespecEndpointExtension</code></td></tr>
+        <tr><td><code>GetReviews.generate.response200 { }.mock { }</code></td><td>stubs a downstream service</td><td><code>WirespecMockExtension</code></td></tr>
+        <tr><td><code>BookDonations.generate.message { }.send()</code></td><td>publishes a message to a channel</td><td><code>WirespecChannelExtension</code></td></tr>
+      </table>
+      <p class="note">Every entry point is a Kotest <code>Arb</code>: <code>checkAll</code>, <code>Exhaustive</code>, shrinking and <code>eventually</code> all work.</p>
+      <aside class="notes">
+        Four entry points, three small extensions. Transportation, MockServer and ChannelTransport are
+        tiny interfaces, so you can bring your own HTTP client, mock server or broker.
+      </aside>
+    </section>
+
+    <section data-label="takeaways">
+      <p class="kicker">Takeaways</p>
+      <h2>What you get</h2>
+      <div class="cols cards big">
+        <div class="card"><h3>One source of truth</h3><p>Production code, clients and the test DSL are generated from the same contract.</p></div>
+        <div class="card"><h3>Pin what matters</h3><p>A scenario spells out what it is about. Everything else is generated, and valid.</p></div>
+        <div class="card"><h3>The contract checks every call</h3><p>Undeclared statuses and bodies of the wrong shape fail the test.</p></div>
+        <div class="card"><h3>All of Kotest</h3><p>Property tests, shrinking and <code>eventually</code>, against the real service.</p></div>
+      </div>
+      <aside class="notes">
+        Wrap up: the contract is no longer only documentation. It drives the code and the tests, and the
+        tests check the code against it on every call.
+      </aside>
+    </section>
+
+    <section data-label="thank you">
+      <div class="cols" style="grid-template-columns: 1.4fr 1fr; align-items: center; height: 100%">
+        <div>
+          <p class="kicker">Thank you</p>
+          <h2>Try it yourself</h2>
+          <ul class="small">
+            <li>The repository: <a href="https://github.com/flock-community/wirespec-kotest-example">flock-community/wirespec-kotest-example</a></li>
+            <li>One tag per step: <code>git checkout step-01</code> … <code>step-10</code></li>
+            <li>Wirespec: <a href="https://wirespec.io">wirespec.io</a> · <a href="https://github.com/flock-community/wirespec">github.com/flock-community/wirespec</a></li>
+            <li>The Kotest integration: <a href="https://wirespec.io/docs/integration/kotest">wirespec.io/docs/integration/kotest</a></li>
+          </ul>
+          <img src="assets/flock-logo.png" alt="Flock." style="height: 40px; margin-top: 24px">
+        </div>
+        <div style="text-align: center">
+          <img src="assets/repo-qr.svg" alt="QR code to the repository" style="width: 300px; border-radius: 14px">
+          <p class="caption">The repository</p>
+        </div>
+      </div>
+      <aside class="notes">
+        Point at the repository: every step is a commit and a tag, and the README walks through each
+        one. Questions.
+      </aside>
+    </section>
+
+  </div>
+</div>
+
+<script src="vendor/reveal.js-5.2.1/dist/reveal.js"></script>
+<script src="vendor/reveal.js-5.2.1/plugin/highlight/highlight.js"></script>
+<script src="vendor/reveal.js-5.2.1/plugin/notes/notes.js"></script>
+<script src="js/wirespec-language.js"></script>
+<script src="js/deck.js"></script>
+</body>
+</html>
