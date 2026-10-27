@@ -417,7 +417,7 @@
   grid-template-columns: 1fr auto 1.2fr auto 1.4fr;
   align-items: center;
   gap: 18px;
-  margin-top: 90px;
+  margin-top: 40px;
 }
 
 .reveal .flow .arrow { color: var(--flock-yellow); font-size: 1.6em; font-weight: 700; }
@@ -428,6 +428,41 @@
 .reveal .flow .outputs { display: grid; gap: 12px; }
 .reveal .flow .outputs .box { padding: 12px 18px; font-size: 0.7em; }
 .reveal .flow .outputs .box.test { border-color: var(--flock-turquoise); }
+
+/* Standards Wirespec converts from and generates */
+
+.reveal .standards {
+  margin-top: 30px;
+  padding: 18px 24px 20px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--surface-line);
+}
+
+.reveal .standards h3 { margin: 0 0 6px; font-size: 0.8em; color: var(--flock-yellow); }
+
+.reveal .standards .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.6em;
+}
+
+.reveal .standards .std-label { width: 7.2em; color: var(--flock-gray); font-weight: 500; }
+.reveal .standards .std-note { margin-left: 6px; color: var(--muted); }
+
+.reveal .standards .std {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--flock-turquoise);
+  color: var(--flock-turquoise);
+  font-family: var(--r-code-font);
+  font-size: 0.92em;
+}
+
+.reveal .standards .std.lang { border-color: var(--surface-line); color: var(--flock-gray); }
 
 /* Footer with the Flock wordmark, outside the scaled slides */
 
