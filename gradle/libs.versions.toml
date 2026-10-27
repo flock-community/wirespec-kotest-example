@@ -20,6 +20,8 @@ wirespec-wiremock = { module = "community.flock.wirespec.integration:wiremock-jv
 # Versions come from the Spring Boot BOM
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
 kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor" }
+spring-kafka = { module = "org.springframework.kafka:spring-kafka" }
+spring-kafka-test = { module = "org.springframework.kafka:spring-kafka-test" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 
 # Kotest: the JUnit 5 runner, the assertions, the Spring extension and property testing

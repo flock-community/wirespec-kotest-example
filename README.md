@@ -601,3 +601,105 @@ generated client throws, the application answers `500`, and the test fails with 
 java.lang.AssertionError: GetRating failed (wirespec seed=2410745794640): [GetRating] UndeclaredStatus:
   status 500 is not declared by the contract. Declared: [200, 404]
 ```
+
+## Step 10: Test an async Kafka channel
+
+Wirespec also describes asynchronous messaging. People can now donate books, and every donation
+arrives on a Kafka topic:
+
+```wirespec
+channel BookDonations -> BookInput
+```
+
+[`DonationListener`](src/main/kotlin/community/flock/library/DonationListener.kt) consumes the
+`book-donations` topic with a plain `@KafkaListener`. It deserializes each message with the
+application's `Wirespec.Serialization` and puts every donation with a valid ISBN on the shelf.
+
+On the test side, `KotestDslExtension` generates `BookDonations.generate.message { ... }`, which
+returns a `Gen<BookInput>`, and `.send(topic)`. Sending goes through `WirespecChannelExtension`.
+Like the mock extension, it works with any transport, here a one-method `ChannelTransport`.
+[`KafkaChannelTransport`](src/test/kotlin/community/flock/library/KafkaChannelTransport.kt)
+implements it with a plain `KafkaProducer`.
+
+[`DonationTest`](src/test/kotlin/community/flock/library/DonationTest.kt) runs against an in-JVM broker
+(`@EmbeddedKafka`) and combines the channel DSL and the endpoint DSL with Kotest's `eventually`:
+
+```kotlin
+@SpringBootTest(webEnvironment = RANDOM_PORT, properties = ["spring.kafka.listener.auto-startup=true"])
+@EmbeddedKafka(partitions = 1, topics = [BOOK_DONATIONS_TOPIC], bootstrapServersProperty = "spring.kafka.bootstrap-servers")
+class DonationTest : FunSpec({
+    extension(libraryApi)
+    extension(
+        WirespecChannelExtension(
+            serialization = { serialization() },
+            transportation = { KafkaChannelTransport(property("spring.kafka.bootstrap-servers")) },
+        ),
+    )
+
+    test("a donated book ends up on the shelf") {
+        val donation = BookDonations.generate.message { title("The Hobbit") }.send(BOOK_DONATIONS_TOPIC)
+
+        eventually(15.seconds) {
+            shelf() shouldContain donation         // shelf() lists the books with ListBooks ... .call()
+        }
+    }
+
+    test("a donation with an invalid ISBN is not put on the shelf") {
+        val invalid = BookDonations.generate.message { isbn("not-an-isbn") }.send(BOOK_DONATIONS_TOPIC)
+        val valid = BookDonations.generate.message { }.send(BOOK_DONATIONS_TOPIC)
+
+        eventually(15.seconds) { shelf() shouldContain valid }
+        shelf() shouldNotContain invalid
+    }
+})
+```
+
+`send()` returns the message it generated and published, so the test can assert on it afterwards. The
+channel DSL only covers the sending side. To check messages that the application itself publishes,
+read the topic with a regular Kafka consumer in the test.
+
+Only `DonationTest` needs a broker. [`src/test/resources/config/application.yaml`](src/test/resources/config/application.yaml)
+is loaded on top of the application's own configuration in every test. It turns the Kafka listeners
+off, so the other specs do not try to reach `localhost:9092`. `DonationTest` turns them back on.
+
+---
+
+## Recap
+
+One contract, four entry points into the generated DSL:
+
+| You write                                         | It does                                                     | Backed by                   |
+|---------------------------------------------------|-------------------------------------------------------------|-----------------------------|
+| `BookInput.generate { title("Dune") }`            | an `Arb` of contract-valid values, pinning what you set     | nothing, plain Kotest       |
+| `AddBook.generate.request { ... }.call()`         | sends a generated request, returns the typed response       | `WirespecEndpointExtension` |
+| `GetReviews.generate.response200 { ... }.mock { }`| stubs a downstream service with a generated response        | `WirespecMockExtension`     |
+| `BookDonations.generate.message { ... }.send()`   | publishes a generated message to a channel                  | `WirespecChannelExtension`  |
+
+Because every entry point is a Kotest `Gen`, they also work with `checkAll`, `Exhaustive`, shrinking
+and the rest of Kotest's property testing.
+
+## Running
+
+```shell
+./gradlew build      # generate, compile and run all tests
+./gradlew test       # only the tests
+./gradlew bootRun    # start the service on :8080
+```
+
+The tests need neither Docker nor any running service. WireMock and the Kafka broker run inside the
+test JVM. `bootRun` expects a Kafka broker for the donations (`KAFKA_BOOTSTRAP_SERVERS`, default
+`localhost:9092`) and the review platform for the ratings (`REVIEWS_BASE_URL`, default
+`http://localhost:8081`). Without them the other endpoints still work.
+
+Versions are in [`gradle/libs.versions.toml`](gradle/libs.versions.toml): Wirespec `0.22.5`, Kotest
+`6.1.11`, Spring Boot `3.5.16`, Kotlin `2.3.21`, Gradle `9.7.1` and Java 21.
+
+## Further reading
+
+- [Wirespec documentation](https://wirespec.io/docs)
+- [Kotest integration](https://wirespec.io/docs/integration/kotest), with more detail in the integration's
+  [README](https://github.com/flock-community/wirespec/blob/master/src/integration/kotest/README.md)
+- [Wirespec on GitHub](https://github.com/flock-community/wirespec), including
+  [`examples/gradle-kotest`](https://github.com/flock-community/wirespec/tree/master/examples/gradle-kotest),
+  a larger example with the same integration
+- [Kotest property testing](https://kotest.io/docs/proptest/property-based-testing.html)

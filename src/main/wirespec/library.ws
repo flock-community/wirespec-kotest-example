@@ -52,6 +52,11 @@ type ApiError {
 }
 
 /*
+  Books donated to the library; every donation is put on the shelf
+*/
+channel BookDonations -> BookInput
+
+/*
   All books, optionally only those of one genre
 */
 endpoint ListBooks GET /books ? {genre: Genre?} -> {

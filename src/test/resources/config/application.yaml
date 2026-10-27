@@ -1,0 +1,13 @@
+# Loaded on top of src/main/resources/application.yaml in every test.
+# Only the specs that start an embedded Kafka broker switch the listeners back on.
+spring:
+  kafka:
+    listener:
+      auto-startup: false
+
+# The embedded Kafka broker is chatty at INFO
+logging:
+  level:
+    kafka: warn
+    org.apache.kafka: warn
+    org.apache.zookeeper: warn

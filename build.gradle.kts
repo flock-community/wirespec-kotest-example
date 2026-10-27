@@ -29,6 +29,7 @@ dependencies {
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
     implementation(libs.spring.boot.starter.web)
     implementation(libs.kotlinx.coroutines.reactor)
+    implementation(libs.spring.kafka)
     implementation(kotlin("reflect"))
 
     implementation(libs.wirespec.runtime)
@@ -36,6 +37,7 @@ dependencies {
     implementation(libs.wirespec.http)
 
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.kafka.test)
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
     testImplementation(libs.kotest.extensions.spring)

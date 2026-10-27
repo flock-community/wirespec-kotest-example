@@ -1,6 +1,12 @@
 spring:
   application:
     name: library
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: library
+      auto-offset-reset: earliest
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 reviews:
   base-url: ${REVIEWS_BASE_URL:http://localhost:8081}
