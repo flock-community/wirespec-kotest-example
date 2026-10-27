@@ -367,8 +367,10 @@ test("the same seed generates the same data") {
 }
 ```
 
-The generated values follow the contract. ISBNs are drawn from the regex, enums from their entries,
-and strings get readable values that start with the field name:
+The generated values follow the contract. Refined types like the ISBN are generated with a reverse
+regex: [rgxgen](https://github.com/flock-community/kotlin-rgxgen) runs the regex from `library.ws`
+backwards and produces strings that match it. Enums are drawn from their entries, and strings get
+readable values that start with the field name:
 
 ```text
 BookInput(isbn=9797433818565, title=title-Y4xwT7n9, author=author-YJMi5uf3, genre=NON_FICTION)
