@@ -40,6 +40,7 @@ dependencies {
     testImplementation(libs.kotest.extensions.spring)
     testImplementation(libs.kotest.property)
     testImplementation(libs.wirespec.kotest)
+    testImplementation(libs.wirespec.http)
 }
 
 tasks.test {

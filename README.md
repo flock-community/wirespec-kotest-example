@@ -361,3 +361,77 @@ BookInput(isbn=9799713690494, title=title-G5fNapuj, author=author-PQxB_RLA, genr
 The last test uses the lower-level API. `kotestWirespecKotlinGenerator(seed)` is a
 `Wirespec.Generator` backed by Kotest `Arb`s, and it drives the `<Type>Generator`s from step 2. The
 DSL is built on top of it.
+
+## Step 7: Scenario tests over real HTTP
+
+The DSL needs to know how to reach the application. That is what `WirespecEndpointExtension` is for.
+[`LibraryApi.kt`](src/test/kotlin/community/flock/library/LibraryApi.kt) creates one that reads
+everything from the Spring test context:
+
+```kotlin
+val libraryApi = WirespecEndpointExtension(
+    serialization = { serialization() },
+    transportation = { HttpTransportation("http://localhost:${property("local.server.port")}") },
+)
+
+suspend fun serialization(): Wirespec.Serialization = applicationContext().getBean<Wirespec.Serialization>()
+```
+
+- The **serialization** is the application's own `Wirespec.Serialization` bean, so the tests write and
+  read JSON exactly like the service does.
+- The **transportation** is `HttpTransportation` from the Wirespec JVM integration (`jvm-jvm`), a
+  `Wirespec.Transportation` on the JDK `HttpClient`, pointed at the random port of `@SpringBootTest`.
+
+A spec that talks to the application registers it with `extension(libraryApi)`. Here is
+[`BookApiTest`](src/test/kotlin/community/flock/library/BookApiTest.kt) from step 5, rewritten with
+the DSL:
+
+```kotlin
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+class BookApiTest : FunSpec({
+    extension(libraryApi)
+
+    test("a book can be added and fetched back") {
+        val added = AddBook.generate.request {
+            body { title("Dune") }
+        }.call()
+        added.shouldBeInstanceOf<AddBook.Response201>()
+
+        val fetched = GetBook.generate.request {
+            path { id(added.body.id) }
+        }.call()
+        fetched.shouldBeInstanceOf<GetBook.Response200>()
+
+        fetched.body shouldBe added.body
+    }
+
+    test("an invalid ISBN is rejected") {
+        AddBook.generate.request { body { isbn("not-an-isbn") } }.call()
+            .shouldBeInstanceOf<AddBook.Response400>()
+    }
+})
+```
+
+Compared to step 5:
+
+- **No JSON, no URLs, no JsonPath.** The request is typed and built from the contract. If a field is
+  renamed in `library.ws`, the test no longer compiles.
+- **Only what the scenario is about is spelled out.** The test pins the title, and the ISBN, author
+  and genre are generated, with valid values. To test the unhappy path, pin an invalid value on
+  purpose: `isbn("not-an-isbn")`.
+- **Typed responses.** `call()` returns the endpoint's sealed `Response`. `shouldBeInstanceOf` narrows
+  it, and from there `added.body.id` is a `BookId`.
+- **Every response is checked against the contract.** A status the contract does not declare, or a
+  body that does not deserialize into the declared type, fails the test even if the assertions
+  would pass. For example, when `GetBook` throws instead of returning a `404`:
+
+  ```text
+  java.lang.AssertionError: GetBook failed (wirespec seed=1872276388795): [GetBook] UndeclaredStatus:
+    status 500 is not declared by the contract. Declared: [200, 404]
+    body={"timestamp":"...","status":500,"error":"Internal Server Error","path":"/books/7c722694-..."}
+  ```
+
+> Why `extension(libraryApi)` in the spec and not in `ProjectConfig`? The extension sets up its
+> serialization and transport before every test of every spec it applies to, and it reads both from
+> the Spring context. The Spring-free `GeneratedDataTest` has no Spring context. If every spec in your suite is a
+> `@SpringBootTest`, you can register it once in `ProjectConfig` next to `SpringExtension()`.

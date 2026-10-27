@@ -11,6 +11,8 @@ wirespec-runtime = { module = "community.flock.wirespec.integration:wirespec-jvm
 wirespec-spring = { module = "community.flock.wirespec.integration:spring-jvm", version.ref = "wirespec" }
 # Runtime of the generated Kotest DSL: Kotest-backed generators, the call()/send()/mock() plumbing
 wirespec-kotest = { module = "community.flock.wirespec.integration:kotest-jvm", version.ref = "wirespec" }
+# HttpTransportation: a Wirespec.Transportation on top of the JDK HttpClient
+wirespec-http = { module = "community.flock.wirespec.integration:jvm-jvm", version.ref = "wirespec" }
 
 # Versions come from the Spring Boot BOM
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
