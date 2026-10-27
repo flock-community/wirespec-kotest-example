@@ -1,0 +1,18 @@
+.gradle/
+.kotlin/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### VS Code ###
+.vscode/
+
+### macOS ###
+.DS_Store
