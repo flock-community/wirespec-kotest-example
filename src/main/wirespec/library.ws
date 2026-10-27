@@ -35,6 +35,15 @@ type Book {
 }
 
 /*
+  How readers rate a book on the external review platform
+*/
+type Rating {
+  bookId: BookId,
+  reviews: Integer,
+  average: Number?
+}
+
+/*
   Returned when a call fails
 */
 type ApiError {
@@ -78,4 +87,12 @@ endpoint ReturnBook DELETE /books/{id: BookId}/loan -> {
   200 -> Book
   404 -> ApiError
   409 -> ApiError
+}
+
+/*
+  The rating of a book, based on its reviews on the external review platform
+*/
+endpoint GetRating GET /books/{id: BookId}/rating -> {
+  200 -> Rating
+  404 -> ApiError
 }

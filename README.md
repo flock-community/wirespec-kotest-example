@@ -500,3 +500,104 @@ Property failed after 3 attempts
 
 Repeat this test by using seed 3571094219167116827
 ```
+
+## Step 9: Mock a downstream service from its contract
+
+The library now shows how readers rate a book. Ratings come from an external review platform, which
+publishes its own Wirespec contract, [`reviews.ws`](src/main/wirespec/reviews.ws):
+
+```wirespec
+type Review {
+  isbn: String,
+  stars: Integer(1, 5),
+  text: String
+}
+
+endpoint GetReviews GET /reviews ? {isbn: String} -> {
+  200 -> Review[]
+}
+```
+
+It sits next to `library.ws`, so the same task generates its models, its client and its test DSL.
+`library.ws` gets a `Rating` type and a `GetRating GET /books/{id}/rating` endpoint.
+[`ReviewsClient`](src/main/kotlin/community/flock/library/ReviewsClient.kt) calls the platform
+through the generated `GetReviewsClient`, and
+[`RatingController`](src/main/kotlin/community/flock/library/RatingController.kt) turns the reviews
+into a `Rating`.
+
+### Mocking with `.mock { }`
+
+`.mock { }` is the counterpart of `.call()`. `call()` generates a request and *sends* it, and
+`mock { }` generates a response and *stubs* it on a mock server. The stub answers every request that
+the typed predicate accepts:
+
+```kotlin
+GetReviews.generate.response200 { body(reviews) }
+    .mock { request -> request.queries.isbn == book.isbn.value }   // request is a typed GetReviews.Request
+```
+
+The mock server comes from `WirespecMockExtension`. It works with any `MockServer`, a two-method
+interface (`stub`, `reset`).
+[`WireMockMockServer`](src/test/kotlin/community/flock/library/WireMockMockServer.kt) implements it in
+about 30 lines on top of WireMock, using the helpers from the Wirespec WireMock integration
+(`wiremock-jvm`) that turn a method, a path template and a raw response into a WireMock mapping.
+
+[`RatingTest`](src/test/kotlin/community/flock/library/RatingTest.kt) starts the server before the
+Spring context, so the application's `reviews.base-url` can point at it:
+
+```kotlin
+@SpringBootTest(webEnvironment = RANDOM_PORT)
+class RatingTest : FunSpec({
+    extension(libraryApi)
+    extension(WirespecMockExtension(server = reviewService, serialization = { serialization() }))
+
+    test("the rating is the average of the book's reviews") {
+        val book = addBook()
+        val reviews = listOf(5L, 4L, 3L).map { stars ->
+            Review.generate { isbn(book.isbn.value); stars(stars) }.draw()
+        }
+        GetReviews.generate.response200 { body(reviews) }
+            .mock { request -> request.queries.isbn == book.isbn.value }
+
+        ratingOf(book) shouldBe Rating(bookId = book.id, reviews = 3, average = 4.0)
+    }
+}) {
+    companion object {
+        private val reviewService = WireMockMockServer.start()
+
+        @JvmStatic
+        @DynamicPropertySource
+        fun reviewsBaseUrl(registry: DynamicPropertyRegistry) {
+            registry.add("reviews.base-url") { reviewService.baseUrl }
+        }
+    }
+}
+```
+
+The downstream contract is useful in a property too. `Review.generate()` produces reviews the
+platform could really send, with `stars` between 1 and 5 as `Integer(1, 5)` requires. So the test
+can check that the library handles every such answer:
+
+```kotlin
+test("whatever the review platform answers, the average stays within the stars its contract allows") {
+    checkAll(20, Arb.list(Review.generate(), 1..25)) { reviews ->
+        val book = addBook()
+        GetReviews.generate.response200 { body(reviews) }
+            .mock { request -> request.queries.isbn == book.isbn.value }
+
+        val rating = ratingOf(book)
+        rating.average.shouldNotBeNull() shouldBeIn 1.0..5.0
+        rating.average shouldBe (reviews.map { it.stars }.average() plusOrMinus 1e-9)
+    }
+}
+```
+
+The response is (de)serialized with the application's own `Wirespec.Serialization`, so the stub
+sends exactly the JSON the generated client expects. If the application calls the platform in a way
+no stub accepts, WireMock answers `404`. The `GetReviews` contract does not declare that status, so the
+generated client throws, the application answers `500`, and the test fails with a contract violation:
+
+```text
+java.lang.AssertionError: GetRating failed (wirespec seed=2410745794640): [GetRating] UndeclaredStatus:
+  status 500 is not declared by the contract. Declared: [200, 404]
+```

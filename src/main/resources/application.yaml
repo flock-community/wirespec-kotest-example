@@ -1,3 +1,6 @@
 spring:
   application:
     name: library
+
+reviews:
+  base-url: ${REVIEWS_BASE_URL:http://localhost:8081}

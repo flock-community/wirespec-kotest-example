@@ -33,6 +33,7 @@ dependencies {
 
     implementation(libs.wirespec.runtime)
     implementation(libs.wirespec.spring)
+    implementation(libs.wirespec.http)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.kotest.runner.junit5)
@@ -40,7 +41,8 @@ dependencies {
     testImplementation(libs.kotest.extensions.spring)
     testImplementation(libs.kotest.property)
     testImplementation(libs.wirespec.kotest)
-    testImplementation(libs.wirespec.http)
+    testImplementation(libs.wirespec.wiremock)
+    testImplementation(libs.wiremock)
 }
 
 tasks.test {
