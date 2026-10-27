@@ -208,6 +208,18 @@
 .hljs-title.function_ { color: #fff1a8; }
 .hljs-subst { color: #ece9e6; }
 
+/* The full contract on one slide: two columns sized to their code */
+.reveal .contract {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+}
+
+.reveal .contract pre { width: auto; margin: 0; font-size: 0.46em; line-height: 1.4; }
+.reveal .contract pre code { padding: 12px 16px; max-height: none; }
+
 /* Plain-text output blocks (test failures, console) */
 .reveal pre.output code {
   color: var(--flock-gray);
