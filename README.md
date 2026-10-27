@@ -263,3 +263,101 @@ It works, but nothing in it is connected to the contract we started with:
   is one the contract declares.
 
 The next steps solve these with code generated from the same contract.
+
+## Step 6: Generate the Kotest DSL
+
+One more IR extension on the compile task generates the test DSL:
+
+```kotlin
+extensionClasses = listOf(
+    SpringMappingAnnotationsExtension::class.java,
+    KotestDslExtension::class.java,
+)
+```
+
+`KotestDslExtension` writes one `<Name>Dsl.kt` per type and per endpoint into the
+`community.flock.library.contract.kotest` package:
+
+| Generated                               | What it gives you                                                                      |
+|-----------------------------------------|----------------------------------------------------------------------------------------|
+| `BookInput.generate { ... }`            | an `Arb<BookInput>`: random but valid books, pinning only the fields you set           |
+| `AddBook.generate.request { ... }`      | an `Arb<AddBook.Request>` with `path { }`, `query { }` and `body { }` blocks             |
+| `AddBook.generate.response201 { ... }`  | an `Arb` per declared response, for stubs (step 9)                                      |
+| `Gen<AddBook.Request>.call()`           | sends one generated request and returns the typed response (step 7)                    |
+| `Gen<AddBook.Response<*>>.mock { ... }` | stubs a downstream service with a generated response (step 9)                          |
+
+Each builder has a field slot per field. The function form pins a constant and the property form takes
+a Kotest `Arb`:
+
+```kotlin
+BookInput.generate {
+    title("Dune")                          // a fixed value
+    genre = Arb.enum<Genre>()              // a random genre on every draw
+}
+```
+
+To make `BookInput.generate` possible, the extension adds an empty `companion object` to each
+generated record. The models themselves stay free of Kotest.
+
+### Keep Kotest out of the production jar
+
+The DSL is generated next to the models, so by default it compiles with `main`, and `kotest-property`
+and `kotest-jvm` become `implementation` dependencies. This build moves the `kotest` package to the
+test source set instead:
+
+```kotlin
+val wirespecKotestDsl = tasks.register<Sync>("wirespecKotestDsl") {
+    from(wirespec.flatMap { it.output }) { include("**/contract/kotest/**") }
+    into(layout.buildDirectory.dir("generated/wirespec-kotest"))
+}
+
+kotlin.sourceSets {
+    main {
+        kotlin.srcDir(wirespec.flatMap { it.output })
+        kotlin.exclude("**/contract/kotest/**")
+    }
+    test {
+        kotlin.srcDir(wirespecKotestDsl)
+    }
+}
+```
+
+With this, `kotest-property` and the Wirespec Kotest runtime (`kotest-jvm`) are `testImplementation`
+dependencies. If you prefer fewer lines in the build script over a smaller jar, skip the `Sync` task
+and declare both as `implementation`.
+
+### Generated data, without Spring
+
+[`GeneratedDataTest`](src/test/kotlin/community/flock/library/GeneratedDataTest.kt) is a plain Kotest
+spec with no Spring context and no HTTP:
+
+```kotlin
+test("every generated book satisfies the contract") {
+    checkAll(BookInput.generate()) { book ->
+        book.isbn.validate() shouldBe true          // the regex from library.ws
+    }
+}
+
+test("pin the fields a test is about, generate the rest") {
+    val book = BookInput.generate { title("Dune"); genre(Genre.FICTION) }.draw()
+    book.title shouldBe "Dune"
+}
+
+test("the same seed generates the same data") {
+    val first = BookInputGenerator.generate(kotestWirespecKotlinGenerator(seed = 42), emptyList())
+    val second = BookInputGenerator.generate(kotestWirespecKotlinGenerator(seed = 42), emptyList())
+    first shouldBe second
+}
+```
+
+The generated values follow the contract. ISBNs are drawn from the regex, enums from their entries,
+and strings get readable values that start with the field name:
+
+```text
+BookInput(isbn=9797433818565, title=title-Y4xwT7n9, author=author-YJMi5uf3, genre=NON_FICTION)
+BookInput(isbn=9799713690494, title=title-G5fNapuj, author=author-PQxB_RLA, genre=CHILDREN)
+```
+
+The last test uses the lower-level API. `kotestWirespecKotlinGenerator(seed)` is a
+`Wirespec.Generator` backed by Kotest `Arb`s, and it drives the `<Type>Generator`s from step 2. The
+DSL is built on top of it.

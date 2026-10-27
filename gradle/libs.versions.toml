@@ -9,16 +9,19 @@ wirespec = "0.22.5"
 wirespec-runtime = { module = "community.flock.wirespec.integration:wirespec-jvm", version.ref = "wirespec" }
 # Routes Spring MVC requests to the generated handlers and provides a Wirespec.Serialization bean
 wirespec-spring = { module = "community.flock.wirespec.integration:spring-jvm", version.ref = "wirespec" }
+# Runtime of the generated Kotest DSL: Kotest-backed generators, the call()/send()/mock() plumbing
+wirespec-kotest = { module = "community.flock.wirespec.integration:kotest-jvm", version.ref = "wirespec" }
 
 # Versions come from the Spring Boot BOM
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
 kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 
-# Kotest: the JUnit 5 runner, the assertions and the Spring extension
+# Kotest: the JUnit 5 runner, the assertions, the Spring extension and property testing
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotest-extensions-spring = { module = "io.kotest:kotest-extensions-spring", version.ref = "kotest" }
+kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

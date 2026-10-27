@@ -1,3 +1,4 @@
+import community.flock.wirespec.integration.kotest.extension.KotestDslExtension
 import community.flock.wirespec.integration.spring.extension.SpringMappingAnnotationsExtension
 import community.flock.wirespec.plugin.Language
 import community.flock.wirespec.plugin.gradle.CompileWirespecTask
@@ -37,6 +38,8 @@ dependencies {
     testImplementation(libs.kotest.runner.junit5)
     testImplementation(libs.kotest.assertions.core)
     testImplementation(libs.kotest.extensions.spring)
+    testImplementation(libs.kotest.property)
+    testImplementation(libs.wirespec.kotest)
 }
 
 tasks.test {
@@ -50,11 +53,27 @@ val wirespec = tasks.register<CompileWirespecTask>("wirespec") {
     output = layout.buildDirectory.dir("generated/wirespec")
     packageName = "community.flock.library.contract"
     languages = listOf(Language.Kotlin)
-    // Puts @GetMapping, @PostMapping, ... on the generated Handler interfaces
-    extensionClasses = listOf(SpringMappingAnnotationsExtension::class.java)
+    extensionClasses = listOf(
+        // Puts @GetMapping, @PostMapping, ... on the generated Handler interfaces
+        SpringMappingAnnotationsExtension::class.java,
+        // Generates the Kotest scenario DSL into the `kotest` package, next to the models
+        KotestDslExtension::class.java,
+    )
+}
+
+// The DSL is test code: copy it out so it compiles with the tests and Kotest stays out of the jar
+val wirespecKotestDsl = tasks.register<Sync>("wirespecKotestDsl") {
+    from(wirespec.flatMap { it.output }) { include("**/contract/kotest/**") }
+    into(layout.buildDirectory.dir("generated/wirespec-kotest"))
 }
 
 // Compile the generated code with the rest of main; Gradle runs the wirespec task first
-kotlin.sourceSets.main {
-    kotlin.srcDir(wirespec.flatMap { it.output })
+kotlin.sourceSets {
+    main {
+        kotlin.srcDir(wirespec.flatMap { it.output })
+        kotlin.exclude("**/contract/kotest/**")
+    }
+    test {
+        kotlin.srcDir(wirespecKotestDsl)
+    }
 }
