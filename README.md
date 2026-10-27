@@ -435,3 +435,68 @@ Compared to step 5:
 > serialization and transport before every test of every spec it applies to, and it reads both from
 > the Spring context. The Spring-free `GeneratedDataTest` has no Spring context. If every spec in your suite is a
 > `@SpringBootTest`, you can register it once in `ProjectConfig` next to `SpringExtension()`.
+
+## Step 8: Property-based integration tests
+
+Every builder slot takes a value or a Kotest `Arb`, and every entry point returns an `Arb`. That makes
+Kotest's [property testing](https://kotest.io/docs/proptest/property-based-testing.html) (`checkAll`
+with an `Arb` or `Exhaustive`) available for integration tests.
+[`BookPropertiesTest`](src/test/kotlin/community/flock/library/BookPropertiesTest.kt) has three
+properties:
+
+```kotlin
+test("books of every genre can be listed by that genre") {
+    checkAll(Exhaustive.enum<Genre>()) { genre ->
+        val book = addBook { genre(genre) }
+
+        ListBooks.generate.request { query { genre(genre) } }.call()
+            .shouldBeInstanceOf<ListBooks.Response200>()
+            .body.shouldContain(book)
+            .shouldForAll { it.genre shouldBe genre }
+    }
+}
+
+test("titles and authors survive the round trip, whatever characters they contain") {
+    val text = Arb.string(1..40, Arb.choice(Codepoint.printableAscii(), Codepoint.cyrillic(), Codepoint.egyptianHieroglyphs()))
+
+    checkAll(50, text, text) { anyTitle, anyAuthor ->
+        val book = addBook { title(anyTitle); author(anyAuthor) }
+        GetBook.generate.request { path { id(book.id) } }.call()
+            .shouldBeInstanceOf<GetBook.Response200>()
+            .body shouldBe book
+    }
+}
+```
+
+The third one is a small **stateful** property. It generates a random sequence of `BORROW` and
+`RETURN` actions, sends them to the service and checks each answer against a one-line model: you can
+borrow when the book is available and return when it is not.
+
+```kotlin
+test("a book can only be borrowed when it is available and only be returned when it is on loan") {
+    checkAll(25, Arb.list(Arb.enum<LoanAction>(), 1..10)) { actions ->
+        val book = addBook()
+
+        actions.fold(true) { available, action ->
+            val accepted = when (action) {
+                LoanAction.BORROW -> BorrowBook.generate.request { path { id(book.id) } }.call() is BorrowBook.Response200
+                LoanAction.RETURN -> ReturnBook.generate.request { path { id(book.id) } }.call() is ReturnBook.Response200
+            }
+            accepted shouldBe (available == (action == LoanAction.BORROW))
+            available != accepted
+        }
+    }
+}
+```
+
+Each iteration adds its own book, so iterations do not share state, and Kotest can **shrink** a
+failure against the running service. Break the conflict check in `Library` so a book can be borrowed
+twice, and the property fails with the smallest sequence that shows it:
+
+```text
+Property failed after 3 attempts
+
+    Arg 0: [BORROW, BORROW] (shrunk from [RETURN, RETURN, RETURN, RETURN, RETURN, RETURN, BORROW, BORROW])
+
+Repeat this test by using seed 3571094219167116827
+```
