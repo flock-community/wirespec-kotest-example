@@ -51,6 +51,11 @@ and the fonts are included in the folder, so the deck also works offline: open
 `slides/index.html` in a browser. Press `S` for the speaker notes, `F` for full screen and `O`
 for the overview. To get a PDF, add `?print-pdf` to the URL and print the page.
 
+On every slide the content rises out of a soft blur with a brief cyan/magenta fringe, and a faint
+yellow glow drifts to a new spot in the background. The title, the step dividers and the last
+slide (`data-glitch="strong"`) get a full RGB glitch. All motion is skipped when the OS asks for
+reduced motion.
+
 GitHub Pages serves the `gh-pages` branch, which holds a copy of `slides/`. After changing the
 slides on `main`, publish them with:
 

@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/flock.css">
 </head>
 <body>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true" id="glitch-filters"></svg>
 <div class="reveal">
   <div class="deck-footer">
     <img src="assets/flock-logo.png" alt="Flock.">
@@ -21,7 +22,7 @@
 
     <!-- ============================================================ Intro -->
 
-    <section class="title-slide" data-state="title">
+    <section class="title-slide" data-state="title" data-glitch="strong">
       <div class="frame">
         <div class="brand-row">
           <img src="assets/flock-logo.png" alt="Flock.">
@@ -139,7 +140,7 @@
 
     <!-- ============================================================ Step 1 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">01</p>
         <h2>Write the contract</h2>
@@ -223,7 +224,7 @@ endpoint ReturnBook DELETE /books/{id: BookId}/loan -> {
 
     <!-- ============================================================ Step 2 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">02</p>
         <h2>Generate Kotlin</h2>
@@ -318,7 +319,7 @@ object AddBook : Wirespec.Endpoint {
 
     <!-- ============================================================ Step 3 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">03</p>
         <h2>Spring Boot</h2>
@@ -377,7 +378,7 @@ fun main(args: Array<String>) {
 
     <!-- ============================================================ Step 4 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">04</p>
         <h2>Implement the handlers</h2>
@@ -420,7 +421,7 @@ class BookController(private val library: Library) :
 
     <!-- ============================================================ Step 5 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">05</p>
         <h2>The classic test</h2>
@@ -462,7 +463,7 @@ class BookApiTest(rest: TestRestTemplate) : FunSpec({
 
     <!-- ============================================================ Step 6 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">06</p>
         <h2>Generate the Kotest DSL</h2>
@@ -645,7 +646,7 @@ BookInput.generate {
 
     <!-- ============================================================ Step 7 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">07</p>
         <h2>Scenario tests over real HTTP</h2>
@@ -757,7 +758,7 @@ test("an invalid ISBN is rejected") {
 
     <!-- ============================================================ Step 8 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">08</p>
         <h2>Property-based integration tests</h2>
@@ -836,7 +837,7 @@ Repeat this test by using seed 3571094219167116827
 
     <!-- ============================================================ Step 9 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">09</p>
         <h2>Mock a downstream service</h2>
@@ -952,7 +953,7 @@ java.lang.AssertionError: GetRating failed (wirespec seed=2410745794640): [GetRa
 
     <!-- ============================================================ Step 10 -->
 
-    <section class="divider" data-state="divider" data-background-color="#fcde00">
+    <section class="divider" data-state="divider" data-glitch="strong" data-background-color="#fcde00">
       <div class="frame">
         <p class="number">10</p>
         <h2>Test an async channel</h2>
@@ -1057,7 +1058,7 @@ class DonationTest : FunSpec({
       </aside>
     </section>
 
-    <section data-label="thank you">
+    <section data-label="thank you" data-glitch="strong">
       <div class="cols" style="grid-template-columns: 1.4fr 1fr; align-items: center; height: 100%">
         <div>
           <p class="kicker">Thank you</p>
