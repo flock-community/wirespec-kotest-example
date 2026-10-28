@@ -318,7 +318,10 @@
   font-weight: 600;
 }
 
-.reveal table.grid code { font-size: 0.9em; }
+.reveal table.grid code { font-size: 0.9em; white-space: nowrap; }
+.reveal table.grid.compact { font-size: 0.6em; }
+.reveal table.grid.compact th,
+.reveal table.grid.compact td { padding: 8px 12px; }
 
 /* Title slide */
 

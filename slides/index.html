@@ -87,7 +87,7 @@
         <div class="outputs">
           <div class="box">Models · endpoints · clients</div>
           <div class="box">Spring handler interfaces</div>
-          <div class="box test"><em>Kotest DSL</em>: <code>generate</code> · <code>call</code> · <code>mock</code> · <code>send</code></div>
+          <div class="box test"><em>Kotest DSL</em>: <code>generate</code> · <code>call</code> · <code>mock</code> · <code>send</code><br><span class="muted small">test data from Kotest property-based testing</span></div>
         </div>
       </div>
       <p class="lead" style="margin-top: 28px">Production code and test code from one source of truth.</p>
@@ -466,7 +466,7 @@ class BookApiTest(rest: TestRestTemplate) : FunSpec({
       <div class="frame">
         <p class="number">06</p>
         <h2>Generate the Kotest DSL</h2>
-        <p>One more IR extension, and the contract becomes a test DSL.</p>
+        <p>One more IR extension, and the contract becomes a test DSL whose data comes from property-based testing.</p>
         <p><span class="pill">git checkout step-06</span></p>
       </div>
     </section>
@@ -543,6 +543,49 @@ BookInput.generate { title("Dune") }
         adds an empty companion object to every model. Because they are extensions in the kotest package,
         they only exist in the test source set: production code never sees them. Kotlin imports by name,
         so the single import of contract.kotest.generate brings every generate into scope.
+      </aside>
+    </section>
+
+    <section data-label="step-06 · generate the kotest dsl">
+      <p class="kicker">Step 06</p>
+      <h2>Test data comes from property-based testing</h2>
+      <p class="small muted">Every value the DSL produces is a sample from a Kotest <code>Arb</code>, the generators of Kotest's property-based testing. The contract decides which <code>Arb</code>.</p>
+      <div class="cols wide-left">
+        <table class="grid compact">
+          <tr><th>In the contract</th><th>Generated with</th></tr>
+          <tr><td><code>isbn: Isbn</code> (a regex)</td><td>reverse regex: <code>9797433818565</code></td></tr>
+          <tr><td><code>title: String</code></td><td>field name + 8 chars: <code>title-Y4xwT7n9</code></td></tr>
+          <tr><td><code>genre: Genre</code></td><td><code>Arb.element(FICTION, …)</code></td></tr>
+          <tr><td><code>available: Boolean</code></td><td><code>Arb.boolean()</code></td></tr>
+          <tr><td><code>stars: Integer(1, 5)</code></td><td><code>Arb.long(1..5)</code></td></tr>
+          <tr><td><code>Review[]</code></td><td>1 to 10 generated elements</td></tr>
+          <tr><td><code>average: Number?</code></td><td><code>null</code> 1 in 5 times</td></tr>
+          <tr><td><code>title("Dune")</code> in a test</td><td><code>Arb.constant("Dune")</code></td></tr>
+        </table>
+        <div>
+          <span class="file">one Arb, three ways to use it</span>
+          <pre class="tight"><code class="language-kotlin" data-trim><script type="text/template">
+val books: Arb<BookInput> = BookInput.generate()
+
+books.draw()                     // one sample
+
+checkAll(books) { book -> }      // many samples,
+                                 // shrunk on failure
+
+AddBook.generate.request { }
+    .call()                      // a fresh sample per call
+          </script></code></pre>
+          <p class="note">Each test gets its own seeded <code>RandomSource</code>: new data on every run, and the seed is printed when a call breaks the contract.</p>
+        </div>
+      </div>
+      <aside class="notes">
+        This is the key idea behind the DSL. It does not hand-roll test data: every value is a sample from
+        a Kotest Arb, the same generators Kotest uses for property-based testing. The contract picks the
+        Arb: a regex becomes a reverse regex, an enum an Arb.element, bounds on an Integer an Arb.long
+        within those bounds, a nullable field is null one time in five. A value you pin is just an
+        Arb.constant. Because it is all Arbs, you can draw one sample, run checkAll over many, or let
+        call() draw a fresh one per request. Each test gets its own seeded random source, so the data
+        changes every run and the seed is printed when a call fails.
       </aside>
     </section>
 
@@ -681,7 +724,7 @@ fetched.body shouldBe added.body
       </div>
       <ul class="check small">
         <li class="fragment">No JSON, no URLs: rename a field in <code>library.ws</code> and the test stops compiling.</li>
-        <li class="fragment">Only the title is pinned. ISBN, author and genre are generated, and valid.</li>
+        <li class="fragment">Only the title is pinned. ISBN, author and genre are drawn from Kotest <code>Arb</code>s: new, valid values every run.</li>
         <li class="fragment"><code>call()</code> returns the sealed <code>Response</code>; <code>shouldBeInstanceOf</code> narrows it to a type.</li>
       </ul>
       <aside class="notes">
@@ -1004,7 +1047,7 @@ class DonationTest : FunSpec({
       <h2>What you get</h2>
       <div class="cols cards big">
         <div class="card"><h3>One source of truth</h3><p>Production code, clients and the test DSL are generated from the same contract.</p></div>
-        <div class="card"><h3>Pin what matters</h3><p>A scenario spells out what it is about. Everything else is generated, and valid.</p></div>
+        <div class="card"><h3>Pin what matters</h3><p>A scenario spells out what it is about. Everything else comes from property-based generators, and is valid.</p></div>
         <div class="card"><h3>The contract checks every call</h3><p>Undeclared statuses and bodies of the wrong shape fail the test.</p></div>
         <div class="card"><h3>All of Kotest</h3><p>Property tests, shrinking and <code>eventually</code>, against the real service.</p></div>
       </div>
